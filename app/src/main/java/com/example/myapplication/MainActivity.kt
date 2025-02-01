@@ -19,9 +19,11 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.appcompat.app.AppCompatActivity
+import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.myapplication.databinding.ActivityMainBinding
+import com.example.myapplication.databinding.ContentMainBinding
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.firebase.Firebase
@@ -32,16 +34,17 @@ import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
 import java.util.UUID
 
+
 class MainActivity : AppCompatActivity() {
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
     private lateinit var storageRef: StorageReference
     private lateinit var selectedImageUri: Uri
-    private lateinit var imageView: ImageView
     private lateinit var firebaseref: DatabaseReference
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-
+    private lateinit var contentBinding: ContentMainBinding
+    private lateinit var database: DatabaseReference  // Référence Firebase
 
     companion object {
         private const val PICK_IMAGE_REQUEST = 1
@@ -54,15 +57,13 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        firebaseref = FirebaseDatabase.getInstance().getReference("Position")
-        binding.button.setOnClickListener {
-            getLocation()
-            firebaseref.setValue("test")
-                .addOnCompleteListener {
-                    Toast.makeText(this, "data stored succesfully", Toast.LENGTH_SHORT).show()
-                }
 
-        }
+        // Initialisation du binding pour content_main.xml
+        contentBinding = ContentMainBinding.bind(findViewById(R.id.app_bar_main))
+
+        // Initialisation de Firebase Database
+        firebaseref = FirebaseDatabase.getInstance().getReference("Position")
+        database = FirebaseDatabase.getInstance().reference.child("users")
 
         setSupportActionBar(binding.appBarMain.toolbar)
 
@@ -73,15 +74,29 @@ class MainActivity : AppCompatActivity() {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
 
         appBarConfiguration = AppBarConfiguration(
-            setOf(
-                R.id.nav_home, R.id.nav_gallery, R.id.nav_slideshow
-            ), drawerLayout
+            setOf(R.id.nav_home, R.id.nav_gallery, R.id.nav_slideshow),
+            drawerLayout
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
 
-        binding.appBarMain.fab.setOnClickListener { view ->
+        binding.appBarMain.fab.setOnClickListener {
             selectImage()
+        }
+
+        // Listener pour le bouton d'envoi de la localisation
+        contentBinding.buttonLocation.setOnClickListener {
+            getLocation()
+        }
+
+        // Listener pour le bouton d'enregistrement du nom
+        contentBinding.buttonSave.setOnClickListener {
+            val name = contentBinding.editTextName.text.toString().trim()
+            if (name.isNotEmpty()) {
+                saveNameToFirebase(name)
+            } else {
+                Toast.makeText(this, "Veuillez entrer un nom", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -101,27 +116,42 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private  fun getLocation(){
+    private fun getLocation() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED){
-                ActivityCompat.requestPermissions(this,
-                    arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),100)
-                return
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION), 100)
+            return
         }
         val location = fusedLocationClient.lastLocation
         location.addOnSuccessListener {
-            if (it != null){
-                firebaseref.setValue("latitude: " + it.latitude.toString() + " , longitude: " + it.longitude.toString())
-
+            if (it != null) {
+                firebaseref.setValue("latitude: ${it.latitude}, longitude: ${it.longitude}")
+                    .addOnCompleteListener {
+                        Toast.makeText(this, "Localisation envoyée", Toast.LENGTH_SHORT).show()
+                    }
             }
+        }
+    }
+
+    private fun saveNameToFirebase(name: String) {
+        val userId = database.push().key
+        if (userId != null) {
+            database.child(userId).setValue(name)
+                .addOnSuccessListener {
+                    Toast.makeText(this, "Nom enregistré avec succès !", Toast.LENGTH_SHORT).show()
+                }
+                .addOnFailureListener { e ->
+                    Toast.makeText(this, "Erreur : ${e.message}", Toast.LENGTH_SHORT).show()
+                }
         }
     }
 
     private fun uploadImage() {
         if (!::selectedImageUri.isInitialized) {
-            Toast.makeText(this, "Select an image first", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Sélectionnez une image d'abord", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -130,11 +160,11 @@ class MainActivity : AppCompatActivity() {
         fileRef.putFile(selectedImageUri)
             .addOnSuccessListener {
                 fileRef.downloadUrl.addOnSuccessListener { uri ->
-                    Toast.makeText(this, "Upload successful: $uri", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Upload réussi : $uri", Toast.LENGTH_LONG).show()
                 }
             }
             .addOnFailureListener {
-                Toast.makeText(this, "Upload failed: ${it.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Échec de l'upload : ${it.message}", Toast.LENGTH_LONG).show()
             }
     }
 

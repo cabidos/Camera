@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "830731115176",
+    "firebase_url": "https://my-applicationmcs-default-rtdb.firebaseio.com",
     "project_id": "my-applicationmcs",
     "storage_bucket": "my-applicationmcs.firebasestorage.app"
   },
