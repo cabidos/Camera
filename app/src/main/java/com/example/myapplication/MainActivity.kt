@@ -33,7 +33,7 @@ import com.google.firebase.database.database
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
 import java.util.UUID
-
+import kotlinx.coroutines.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -86,7 +86,10 @@ class MainActivity : AppCompatActivity() {
 
         // Listener pour le bouton d'envoi de la localisation
         contentBinding.buttonLocation.setOnClickListener {
-            getLocation()
+            startLocationService()
+        }
+        contentBinding.buttonLocation2.setOnClickListener {
+            stopLocationService()
         }
 
         // Listener pour le bouton d'enregistrement du nom
@@ -116,6 +119,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun startLocationService() {
+        val serviceIntent = Intent(this, LocationService::class.java)
+        ContextCompat.startForegroundService(this, serviceIntent)
+        Toast.makeText(this, "Service de localisation démarré", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun stopLocationService() {
+        val serviceIntent = Intent(this, LocationService::class.java)
+        stopService(serviceIntent)
+        Toast.makeText(this, "Service de localisation arrêté", Toast.LENGTH_SHORT).show()
+    }
+
     private fun getLocation() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED &&
@@ -135,7 +150,15 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+    private fun CheckPermission(): Boolean {
+        return ActivityCompat.checkSelfPermission(
+            this, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(
+                    this, Manifest.permission.ACCESS_COARSE_LOCATION
+                )== PackageManager.PERMISSION_GRANTED
 
+    }
     private fun saveNameToFirebase(name: String) {
         val userId = database.push().key
         if (userId != null) {
