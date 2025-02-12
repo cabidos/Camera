@@ -27,7 +27,7 @@ class LoginActivity : AppCompatActivity() {
         passwordEditText = findViewById(R.id.editTextPassword)
         loginButton = findViewById(R.id.buttonLogin)
         registerButton = findViewById(R.id.buttonRegister)
-
+        connect()
         // Connexion d'un compte existant
         loginButton.setOnClickListener {
             val email = emailEditText.text.toString().trim()
@@ -52,7 +52,13 @@ class LoginActivity : AppCompatActivity() {
             }
         }
     }
-
+    private  fun connect() {
+        if (auth.currentUser != null) {
+            val intent = Intent(this, MainActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
+    }
     // Connexion d'un utilisateur existant
     private fun loginUser(email: String, password: String) {
         auth.signInWithEmailAndPassword(email, password)
